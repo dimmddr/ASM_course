@@ -16,6 +16,7 @@ _:
     mov ah, 03Fh
     mov cx, 0FFFFh
     mov dx, prog
+	int 21h
 
     jc err_
 
@@ -29,35 +30,35 @@ _:
     jc err_
 
     ;save vector 01
-    ;mov ah, 035h
-    ;mov al, 01h
-    ;int 21h
-    ;mov word ptr old_01, bx
-    ;mov word ptr old_01+2, es
+    mov ah, 035h
+    mov al, 01h
+    int 21h
+    mov word ptr old_01, bx
+    mov word ptr old_01+2, es
 
     ;save vector 03
-    ;mov ah, 035h
-    ;mov al, 03h
-    ;int 21h
-    ;mov word ptr old_03, bx
-    ;mov word ptr old_03+2, es
+    mov ah, 035h
+    mov al, 03h
+    int 21h
+    mov word ptr old_03, bx
+    mov word ptr old_03+2, es
 
     ;set new vector
-    ;pushf
-    ;cli
-    ;    mov ah, 25h
-    ;    mov al, 01h
-    ;    mov dx, offset int_01_handler
-    ;    push ds
-    ;    push cs
-    ;    pop ds
-    ;    int 21h
-    ;    mov al, 03h
-    ;    mov dx, offset int_03_handler
-    ;    int 21h
-    ;    pop ds
-    ;sti
-    ;popf
+    pushf
+    cli
+       mov ah, 25h
+       mov al, 01h
+       mov dx, offset int_01_handler
+       push ds
+       push cs
+       pop ds
+       int 21h
+       mov al, 03h
+       mov dx, offset int_03_handler
+       int 21h
+       pop ds
+    sti
+    popf
 
     mov ax, psp/16
     push cs
@@ -111,6 +112,40 @@ err_msg db "Error!$"
 msg db "File load succesfully!$"
 old_01 dd ?
 old_03 dd ?
+
+print_word:
+	pusha
+	lea	bx,sym_tab
+	mov	ax,cx
+	shr	ax,12
+	xlat
+	mov	dl,al
+	mov	ah,02
+	int	21h
+	mov	ax,cx
+	shr	ax,8
+	and	al,0Fh
+	xlat
+	mov	dl,al
+	mov	ah,02
+	int	21h
+	mov	ax,cx
+	shr	ax,4
+	and	al,0Fh
+	xlat
+	mov	dl,al
+	mov	ah,02
+	int	21h
+	mov	ax,cx
+	and	ax,0Fh
+	xlat
+	mov	dl,al
+	mov	ah,02
+	int	21h
+	popa
+	ret
+
+sym_tab	db	"0123456789ABCDEF"
 
 buf:
 end _
