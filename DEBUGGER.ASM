@@ -68,10 +68,10 @@ _:
     mov bx, psp
     mov byte ptr [bx], 0CBh
 
-	;mov bx, psp+10h 				;находим место для устанвоки брейкпоинта;
-	;mov cl, [bx + 0F5h] 			;запоминаем оригинальную команду
-	;mov [bx], cl
-	;mov byte ptr [bx + 0F5h], 0CCh 	;устанавливаем брейкпоинт
+	mov bx, psp+10h 				;находим место для устанвоки брейкпоинта;
+	mov cl, [bx + 0F5h] 			;запоминаем оригинальную команду
+	mov [bx], cl
+	mov byte ptr [bx + 0F5h], 0CCh 	;устанавливаем брейкпоинт
 	
     mov ds, ax
 
@@ -81,26 +81,21 @@ _:
     push ax
     push 100h
 	
-	pushf
-		mov bp, sp
-		or word ptr[bp+0], 0100h
-	popf
-	
     retf
 
     ret
 eod_handler:
-    mov ah, 09h
-    lea dx, fname
-    int 21h
-    lds dx, old_01
-    mov ah, 25h
-    mov al, 01h
-    int 21h
-    lds dx, old_03
-    mov al, 03h
-    mov ah, 25h
-    int 21h
+    ;mov ah, 09h
+    ;lea dx, fname
+    ;int 21h
+    ;lds dx, old_01
+    ;mov ah, 25h
+    ;mov al, 01h
+    ;int 21h
+    ;lds dx, old_03
+    ;mov al, 03h
+    ;mov ah, 25h
+    ;int 21h
     ret
 
 err_:
@@ -172,9 +167,15 @@ int_03_handler proc
     pop cx
     pop bp
 
-pop cx ;ip то указывает на то место, что идет после брейкпоинта, а не на него самого (поэтому печатается 106, а не 105)
-sub cx, 1h ;поэтому вручную вернем ip на ту команду, что мы зачистили CC'шкой
-push cx
+	pop cx ;ip то указывает на то место, что идет после брейкпоинта, а не на него самого (поэтому печатается 106, а не 105)
+	sub cx, 1h ;поэтому вручную вернем ip на ту команду, что мы зачистили CC'шкой
+	push cx
+		
+	;А дальше выставим флаг трассировки и пойдем по всем инструкциям
+	pushf
+		mov bp, sp
+		or word ptr[bp+0], 0100h
+	popf
     iret
 int_03_handler endp
 
