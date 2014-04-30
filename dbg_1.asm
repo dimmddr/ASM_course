@@ -87,7 +87,18 @@ int_01_handler proc
     push cx
 	push ax
 	push dx	
-    
+		mov cx, cs
+		push ds	
+			push cs 
+			pop ds
+
+			call print_word 
+			mov ah, 02h
+			mov	dl, 03Ah
+			int 21h
+		
+		pop ds 
+	
 		mov bp, sp 
 		add bp, 08h
 		mov cx, [bp] ;now ip in cx.

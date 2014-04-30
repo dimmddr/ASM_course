@@ -129,7 +129,7 @@ int_03_handler proc
 	push ax
 	push dx	
 
-		mov bp,sp ;memorize cs, ip
+		mov bp, sp ;memorize cs, ip
 		add bp, 8h
 		mov cx, [bp]
 		add bp, 2h
