@@ -32,22 +32,10 @@ _c:
 	cmp f9, 1
 	jne _c
 	
-	mov ah, 09h
-    lea dx, err_msg
-    int 21h
-	
 	push ds
 	push ax
 	push es
-		push ds
-			lds dx, int_9_old
-		pop ds
-		push dx
-			mov ah, 09h
-			lea dx, err_msg
-			int 21h
-		pop dx
-		;pop ds
+		lds dx, int_9_old
 		xor ax, ax
 		mov es, ax
 		cli
@@ -60,15 +48,15 @@ _c:
     ret
 	
 int_9:
-	push ax
-	push ds
+	push ax              ; Save registers
+	push ds              ;
 	sti
-	mov ax, cs
-	mov ds, ax
-	in al, 60h	;get scan code
-	cmp al, 1
-	jne _1
-	mov cs:f9, al
+	mov ax, cs           ; Make sure DS = CS
+	mov ds, ax           ;
+	in al, 60h           ; Get scan code
+	cmp al,1             ;
+	jne	_1               ; Process event
+	mov	cs:f9,al
 _1:
 	call print
 	in al, 061h			;Send acknowledgment without modifying the other bits.
@@ -86,30 +74,51 @@ eod_handler:
 
 print:
 	pusha
-	push ds
-	push es
+		push ds
+		push es
 		push cs
-		pop ds
+		pop	ds
 		push cs
-		pop es
-		mov di, offset m0
+		pop	es
+		mov	di,offset m0
 		cld
-		call h2
-		mov al, m0
-		mov ah, 0Eh
-		int 10h
-		mov al, m0 + 1
-		mov ah, 0Eh
-		int 10h
-		mov al, 13
-		mov ah, 0Eh
-		int 10h
-		mov al, 10
-		mov ah, 0Eh
-		int 10h
-	pop es
-	pop ds
-	popa
+		call h2 ;convert to ascii code
+		mov	al,m0
+		mov	ah,9    ; 9 функция 10 прерывания - печать символа на месте курсора с атрибутами
+		mov	bx, 0Fh ; записанными в bx 
+		mov	cx,1    ; сколько раз напечатать символ
+		int	10h     
+		xor	bh,bh
+		mov	ah,3    ; 3 функция 10 прерыванияполучить нынешнее положение курсора
+		int	10h
+		inc	dl      ;в dl номер столбца. Соответственно увеличиваем его
+		mov	ah,2    ;2 функция 10 прерывания - переместить курсор
+		int	10h
+		mov	al,m0+1 ;печатаем второй символ
+		mov	ah,9
+		mov	bx, 0Fh
+		mov	cx,1
+		int	10h
+		xor	bh,bh   ;сдвигаем курсор в начало строки
+		mov	ah,3
+		int	10h
+		xor	dl, dl
+		mov	ah,2
+		int	10h
+
+		mov ah, 06h ;6 функция 10 прерывание - window scroll up
+		mov al, 1
+		mov bh, 0Fh
+		xor ch, ch
+		xor cl, cl
+		mov dh, 25
+		mov dl, 85
+		int 10h 
+
+		pop	es
+		pop	ds
+		popa
+		ret
 h2:		
 	push	ax
 		shr	al, 4
