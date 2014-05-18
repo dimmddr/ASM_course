@@ -5,6 +5,7 @@ open pci_device, "list.txt";
 #Регексп, я вызываю тебя!
 my %dev;
 my $i = 0; my %cnt;
+my $max = -1;
 foreach (<pci_device>) {
 	chomp; 
 	s/^"(.*)"$/$1/; 
@@ -21,9 +22,11 @@ foreach (<pci_device>) {
 			$a[1] =~ s/^0x(?<id>[0-9a-f]{1}$)/000$+{id}/i;
 		} else { next }
 	}
-	$dev{$a[0]}{$a[1]} = $a[2].$a[3].$a[4];
+	$dev{$a[0]}{$a[1]} = join " ", $a[2..4];
+	$max = length(join " ", $a[2..4]) if($max < length(join " ", $a[2..4]));
 	# print $a[0]." -> ";
 	# print $a[1]." -> ";
 	# say $dev{$a[0]}{$a[1]};
 }
 #Хэш массивов хэшей?
+say $max;
