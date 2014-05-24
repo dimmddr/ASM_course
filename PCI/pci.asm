@@ -2,6 +2,8 @@ model	tiny
 	.code
 	.386
 	org	100h
+psp = ((buf-_+100h) + 15)/16*16
+prog = psp+100h
 _:		
 	mov	dx, 0CF8h	;запонимаем адрес confid_address регистра
 	mov	ecx, 80000000h	;это в двоичной системе даст нам нулевую шину, нулевое устройство, нулевую функцию. 
@@ -43,7 +45,7 @@ non_mult:
 	shr	ebp, 8		;возвращаем исходное состо€ние ebp
 	out	dx, eax		;просим доступ к конкретному устройству
 	add	dx, 4		;переходим к config_data регистру
-	in	eax,dx		;получаем product ID, device ID
+	in	eax, dx		;получаем product ID, device ID
 	sub	dx, 4		;возвращаемс€ к config_address регистру
 	cmp	ax, -1		;если устройства нет (то есть из CFC вернулась -1) 
 	jne	end_of_all	;то уходим к коду end_of_all, иначе - печатаем
@@ -92,17 +94,231 @@ print_info:				;код дл€ печати всего, что нужно
 				shr	eax, 10h
 				mov	cx, ax
 				call	print_word ;конвертирует 16 бит из cx и печатает их
+				;lea dx, msg_v
+				;call msg_
 			pop	eax
 			mov	cx, ax
 			call	print_word
+			; push eax
+				; lea dx, msg_p
+				; call msg_
+			; pop eax
 		pop	ecx
 		
-		call	print_string		; from eax ;печатаем название устройства. Ёто только дл€ талантов.
-		call	print_new_line		; переход на следующую строку
+		call	print_string		; from eax ;печатаем название устройства
+		push	dx		; переход на следующую строку
+		push	ax
+			mov	dx, offset endline
+			mov	ah, 09h
+			int	21h
+		pop	ax
+		pop	dx
 	pop	edi
 	ret
+print_string:
+	cmp eax, 11063269h		;ѕоследн€€ запись первого файла
+	ja smth2
+	lea dx, file_name1
+	push eax	;открываем файл
+		xor eax, eax
+		mov ax, 3Dh
+		int 21h
+		
+		jc err_
+		
+		mov bx, ax
+		xor ax, ax
+		mov ah, 3Fh
+		mov cx, 0C350h	;Ётого должно хватить	~50 б
+		mov dx, prog
+		int 21h
+		
+		jc err_
+		
+		mov ah, 03Eh	;«акрываем файл
+		int 21h
+		
+		jc err_
+		
+	pop eax
+	mov esi, edx	;ѕотому что нельз€ использовать edx как указатель
 	
+	mov ecx, [esi]
+	call	print_word
+	shr ecx, 10h
+	call	print_word
+	push	dx		; переход на следующую строку
+	push	ax
+		mov	dx, offset space
+		mov	ah, 09h
+		int	21h
+	pop	ax
+	pop	dx
+	
+	mov ecx, 1842   ;3685 / 2 - центр первого файла
+	mov edx, ecx
+	jmp search
+smth2:
+	lea dx, file_name2
+	push eax	;открываем файл
+		mov ax, 3Dh
+		xor al, al
+		int 21h
+	push eax
+		call err_
+	pop eax
+		
+		jc err_
+		
+		mov bx, ax
+		xor ax, ax
+		mov ah, 3Fh
+		mov cx, 0C350h	;Ётого должно хватить	~50 б
+		mov dx, prog
+		int 21h
+		
+		jc err_
+		
+		mov ah, 03Eh	;«акрываем файл
+		int 21h
+		
+		jc err_
+		
+	pop eax
+	mov esi, edx	;ѕотому что нельз€ использовать edx как указатель
+	
+	; push eax
+		; lea dx, msg_p
+		; call msg_
+	; pop eax
+	
+	mov ecx, [esi]
+	call	print_word
+	shr ecx, 10h
+	call	print_word
+	push	dx		; переход на следующую строку
+	push	ax
+		mov	dx, offset space
+		mov	ah, 09h
+		int	21h
+	pop	ax
+	pop	dx
+	
+	mov ecx, 1794   ;центр второго файла
+	mov edx, ecx
+search:
+	cmp edx, 0
+	je end_of_find
+	push eax
+        mov eax, ecx
+		mov edi, 12
+        mul edi
+		mov edi, eax
+	pop eax
+	add edi, esi
+	mov ebx, [edi]
+	cmp ebx, eax
+	je end_of_find	;ћне захотелось с этой проверкой сделать
+	shr edx, 1
+	ja above
+	sub ecx, edx
+	jmp search
+above:
+	add ecx, edx
+	jmp search
+		
+end_of_find:
+	add edi, 8
+	mov cx, [edi]	;—читываем нужный номер строки
+	lea dx, names
+	xor eax, eax
+	mov ax, 3Dh
+	int 21h
+		
+	jc err_
+		
+	mov bx, ax		;«апомнили handler
+	mov eax, ecx	;√отовимс€ умножать
+	mov edx, 130	;130 - длина строки с названием
+	mul edx
+	mov dx, ax		;сохран€ем значение смещени€
+	shr eax, 10h	
+	mov cx, ax
+	mov ah, 42h		
+	mov al, 0
+	int 21h			;сдвигаем указатель в файле
+		
+	jc err_
+		
+	mov ah, 3Fh
+	mov cx, 130
+	lea dx, string
+	int 21h
+		
+	jc err_
+		
+	mov ah, 03Eh	;«акрываем файл
+	int 21h
+		
+	jc err_
+		
+	ret
+print_word:	;конвертирует 16 бит регистра cx в их ascii код и печатает.
+	pusha
+		lea	bx, sym_tab
+		mov	ax, cx
+		shr	ax, 12
+		xlat
+		mov	dl, al
+		mov	ah, 02
+		int	21h
+		mov	ax, cx
+		shr	ax, 8
+		and	al, 0Fh
+		xlat
+		mov	dl, al
+		mov	ah, 02
+		int	21h
+		mov	ax, cx
+		shr	ax, 4
+		and	al, 0Fh
+		xlat
+		mov	dl, al
+		mov	ah, 02
+		int	21h
+		mov	ax, cx
+		and	ax, 0Fh
+		xlat
+		mov	dl, al
+		mov	ah, 02
+		int	21h
+
+		mov	ah, 02h
+		mov	dl, 20h
+		int	21h
+	popa
+	ret
+msg_:
+    mov ah, 09h
+    int 21h
+    ret
+err_:
+	pusha
+    mov ah, 09h
+    lea dx, err_msg
+    int 21h
+	popa
+    ret
+	
+	file_name1	db "smth", 0
+	file_name2	db "smth2", 0
+	names		db "names.txt", 0
+	space		db ' ', 0
+	endline		db 13, 10, '$'
+	string		db '                                                                                                                                  ', 0
+	msg_v		db	"Vendor Id: ", '$'
+	msg_p		db	"Product Id: ", '$'
+	err_msg 	db "Error!$"
 	sym_tab		db	"0123456789ABCDEF"
-	endline		db	13,10,'$' 	;нова€ строка
-	space		db	' ', '$'	;пробел
+buf:
 end _
